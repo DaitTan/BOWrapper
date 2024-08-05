@@ -48,7 +48,7 @@ if __name__ == "__main__":
     worst_result = simulate_model(f16_model, options, worst_sample)
 
     print(worst_sample)
-    with open("F16_monitor.pkl", "wb") as f:
+    with open("AT_monitor_results.pkl", "wb") as f:
         pickle.dump(result, f)
     
     # print(result)
