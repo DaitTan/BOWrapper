@@ -69,7 +69,7 @@ class InternalBO(BO_Interface):
             if behavior == Behavior.FALSIFICATION and pred_sample_y <= 0:
                 break
 
-        return x_train, y_train
+        return [x_train, y_train]
 
         
 

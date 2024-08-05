@@ -6,7 +6,8 @@ authors = ["daittan <tanmay.khandait@gmail.com>"]
 packages = [{include="bo"}]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.9,<3.10"
+matlabengine= "9.12.21"
 numpy = "^1.22.4"
 scikit-learn = "^1.1.1"
 scipy = "^1.8.1"
@@ -17,6 +18,8 @@ treelib = "^1.6.1"
 pandas = "^1.4.3"
 pathos = "^0.2.9"
 tqdm = "^4.66.2"
+plotly = "^5.23.0"
+psy-taliro = {version = "1.0.0b9", extras = ["rtamt"]}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
