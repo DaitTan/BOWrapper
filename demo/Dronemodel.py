@@ -19,7 +19,7 @@ DroneResultT = ExtraResult[DroneDataT, DroneDataT]
 class DroneModel(Model[DroneResultT, None]):
     def __init__(self, MODE) -> None:
         self.engine = matlab.engine.start_matlab()
-        self.engine.cd(r'/home/local/ASURITE/tkhandai/Research_Work/BOWrapper/demo', nargout=0)
+        # self.engine.cd(r'/home/local/ASURITE/tkhandai/Research_Work/BOWrapper/demo', nargout=0)
         self.MODE = MODE
 
     def simulate(

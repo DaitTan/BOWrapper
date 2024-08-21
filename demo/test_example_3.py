@@ -5,7 +5,7 @@ import numpy as np
 from collections import OrderedDict
 import plotly.graph_objects as go
 
-from F16model import F16Model
+from Dronemodel import DroneModel
 
 from staliro.core import worst_eval, worst_run
 from staliro.options import Options
@@ -34,7 +34,7 @@ initial_conditions = [
 
 options = Options(runs=1, iterations=300, interval=(0, 15), static_parameters=initial_conditions)
 
-f16_model = F16Model(3)
+f16_model = DroneModel(3)
 
 
 if __name__ == "__main__":
