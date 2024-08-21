@@ -20,6 +20,9 @@ pathos = "^0.2.9"
 tqdm = "^4.66.2"
 plotly = "^5.23.0"
 psy-taliro = {version = "1.0.0b9", extras = ["rtamt"]}
+polytope = "^0.2.5"
+shapely = "^2.0.5"
+kaleido = "0.2.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
