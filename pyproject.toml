@@ -23,6 +23,7 @@ psy-taliro = {version = "1.0.0b9", extras = ["rtamt"]}
 polytope = "^0.2.5"
 shapely = "^2.0.5"
 kaleido = "0.2.1"
+aerobench = {git = "https://github.com/qthibeault/aerobenchvvpython.git"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

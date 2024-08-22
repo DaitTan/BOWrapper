@@ -49,10 +49,12 @@ class BO(Optimizer[float, BOResult]):
             sample_cost = compute_robustness(np.array([single_sample]), test_function)
             out_samples_1.append(sample_cost)
             logger.debug(f"Cost {sample_cost}")
+            if self.behavior == Behavior.FALSIFICATION:
             # print(f"Cost {sample_cost}")
-            if sample_cost <= 0:
-                logger.debug(f"Falsified during Initial Search")
-                return BOResult([in_samples_1[iter, :], np.array(out_samples_1)])
+                if sample_cost <= 0:
+                    logger.debug(f"Falsified during Initial Search")
+                    return BOResult([in_samples_1[iter, :], np.array(out_samples_1)])
+
         out_samples_1 = np.array(out_samples_1).squeeze()
 
         return BOResult(bo.sample(test_function, budget-self.init_sampling_budget, in_samples_1, out_samples_1, region_support, self.gpr_model, self.behavior, rng))
