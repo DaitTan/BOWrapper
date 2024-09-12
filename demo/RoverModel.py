@@ -33,10 +33,6 @@ class RoverModel(Model[RoverResultT, None]):
         data_py = np.array(data)
         timestamps_py = np.array(timestamps).flatten()
         
-
-        print(timestamps_py.shape)
-        print(data_py.shape)
-        print(Fvwe)
         outTrace = Trace(timestamps_py, data_py)
         inTrace = inputs.static
         return RoverResultT(outTrace, inTrace)

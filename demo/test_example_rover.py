@@ -20,8 +20,8 @@ from bo.bayesianOptimization import InternalBO
 import pickle
 
 # Define the specification
-phi = "always(not(alt<=0.0 and speed <=0.0))"
-specification = RTAMTDense(phi, {"alt": 2, "speed": 5})
+phi = "always(x<=1 and y<=1)"
+specification = RTAMTDense(phi, {"x": 0, "y": 1})
 
 # Define the optimizer
 gpr_model = InternalGPR()
@@ -30,9 +30,9 @@ optimizer = BO(20, gpr_model, bo_model, "lhs_sampling", Behavior.FALSIFICATION)
 
 # Initial Search Conditions
 initial_conditions = [
-    [0.1, 0.5], #ti bounds
-    [0.1,0.5], #gr bounds,
-    [0.1,0.5]
+    [0.1, 0.3], #ti bounds
+    [0.1,0.3], #gr bounds,
+    [0.1,0.3]
 ]
 
 options = Options(runs=1, iterations=100, interval=(0, 15), static_parameters=initial_conditions)
@@ -70,5 +70,5 @@ if __name__ == "__main__":
     # )
     # figure.update_layout(title=f"Example 1: {[round(a,5) for a in best_sample.values]}", xaxis_title="time (s)")
     # figure.write_image("fig1.pdf")
-    with open("MRoverModel.pkl", "wb") as f:
+    with open("RoverModel.pkl", "wb") as f:
         pickle.dump(result, f)
