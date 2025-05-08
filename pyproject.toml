@@ -1,26 +1,123 @@
-[tool.poetry]
-name = "bo"
-version = "0.1.1"
-description = ""
-authors = ["daittan <tanmay.khandait@gmail.com>"]
-packages = [{include="bo"}]
-
-[tool.poetry.dependencies]
-python = ">=3.8,<3.11"
-numpy = "^1.22.4"
-scikit-learn = "^1.1.1"
-scipy = "^1.8.1"
-scikit-optimize = "^0.9.0"
-coverage = "^6.4"
-matplotlib = "^3.5.2"
-treelib = "^1.6.1"
-pandas = "^1.4.3"
-pathos = "^0.2.9"
-tqdm = "^4.66.2"
-
-[tool.poetry.dev-dependencies]
-pytest = "^5.2"
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "bo"
+version = "0.2.0"
+description = ""
+authors = [
+    { name = "Tanmay Khandait", email = "tkhandai@asu.edu" }
+]
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "scikit-learn >=1.1.1,<2",
+    "scipy >=1.8.1,<2",
+    "scikit-optimize >=0.9.0,<0.10",
+    "treelib >=1.6.1,<2",
+    "pandas >=1.4.3,<2",
+    "psy-taliro >=1.0.0,<2",
+    "numpy >=1.22.4,<2",
+    "pathos >=0.3.3,<0.4",
+    "botorch (>=0.13.0,<0.14.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+]
+
+[tool.poetry]
+packages = [
+    {include="bo", from="src"}
+]
+
+[tool.poetry.requires-plugins]
+poethepoet = { version = "^0.32.2", extras = ["poetry_plugin"] }
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.14.1"
+ruff = "^0.9.3"
+pandas-stubs = "^2.2.3.241126"
+
+[tool.poetry.group.docs.dependencies]
+Sphinx = "^5.3.0"
+
+[tool.poetry.group.demos.dependencies]
+matplotlib = "^3.5.2"
+
+[tool.poe.tasks.test]
+cmd = "pytest tests"
+
+[tool.poe.tasks.lint]
+cmd = "ruff check ${FILES}"
+args = [
+    { name = "FILES", positional = true, default = "src tests demos"}
+]
+
+[tool.poe.tasks.typecheck]
+cmd = "mypy --pretty ${FILES}"
+args = [
+    { name = "FILES", positional = true, default = "src tests demos"}
+]
+
+[tool.poe.tasks.check]
+sequence = ["typecheck", "lint"]
+
+[tool.mypy]
+python_version = "3.9"
+files = [
+    "src/**/*.py",
+    "tests/**/*.py",
+    "demos/**/*.py",
+]
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_return_any = true 
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+disallow_any_expr = false
+disallow_any_generics = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# TODO: Create stubs for these packages to avoid having to ignore missing annotations
+module = [
+    "sklearn.*",
+    "scipy.*",
+    "treelib.*",
+    "pathos.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9", "F", "C90",  # Default Flake8 lints
+    "A",                           # Built-in shadowing lints
+    "B",                           # Bugbear lints
+    "I",                           # Isort lints
+    "UP",                          # Upgrade lints
+    "C4",                          # List comprehension lints
+    "PYI",                         # Stub file lints
+    "RET501", "RET502", "RET504",  # Return value lints
+    "N8",                          # Naming plugin
+    "TD",                          # TODO plugin
+    "FBT",                         # Boolean trap lints
+    "SIM",                         # Simplification lints
+    "PTH",                         # Pathlib migration lints
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["partx"]
+split-on-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
