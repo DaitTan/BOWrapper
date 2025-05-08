@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from numpy.random import default_rng
 
-from bo.bo import BOSampling, InternalBO
+from bo.core import BOSampling, InternalBO
 from bo.gpr import InternalGPR
 from bo.utils import Fn, compute_robustness
 from scipy.stats import t  

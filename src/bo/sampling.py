@@ -5,10 +5,10 @@ from scipy.stats import qmc
 
 def lhs_sampling(
     num_samples: int,
-    region_support: NDArray,
+    region_support: NDArray[np.float_],
     tf_dim: int,
-    rng,
-) -> NDArray:
+    rng: np.random.Generator,
+) -> NDArray[np.float_]:
     """Latin Hypercube Sampling: Sample *num_samples* points within the *region_support* which has a dimension as mentioned below.
 
     Attributes:
@@ -36,19 +36,18 @@ def lhs_sampling(
     if not np.all(region_support[:,1]-region_support[:,0] >= 0):
         raise ValueError("Region Support Z-pairs must be in increasing order")
 
-    sampler = qmc.LatinHypercube(d=tf_dim, seed=rng)
+    sampler = qmc.LatinHypercube(d=tf_dim, rng=rng)
     samples = sampler.random(n=num_samples)
     lb = region_support[:,0]
     ub = region_support[:,1]
-    # print(lb, ub)
     scaled_samples = qmc.scale(samples, lb, ub)
 
     return np.array(scaled_samples)
 
 
 def uniform_sampling(
-    num_samples: int, region_support: NDArray, tf_dim: int, rng
-) -> NDArray:
+    num_samples: int, region_support: NDArray[np.float_], tf_dim: int, rng: np.random.Generator
+) -> NDArray[np.float_]:
     """Sample *num_samples* points within the *region_support* which has a dimension as mentioned below.
 
     Attributes:

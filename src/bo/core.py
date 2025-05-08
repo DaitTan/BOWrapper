@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Tuple
+from dataclasses import dataclass
 
 import numpy as np
 import tqdm
@@ -12,7 +12,7 @@ from .sampling import uniform_sampling
 from .utils import Fn, compute_robustness
 
 
-class BO_Interface(ABC):
+class BOInterface(ABC):
     @abstractmethod
     def __init__(self) -> None:
         """ Initialize BO Method for use in Part-X
@@ -23,13 +23,12 @@ class BO_Interface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sample(self, test_function: Fn,
-        num_samples: int,
-        x_train: NDArray,
-        y_train: NDArray,
-        region_support: NDArray,
+    def sample(self,
+        x_train: NDArray[np.float_],
+        y_train: NDArray[np.float_],
+        region_support: NDArray[np.float_],
         gpr_model: GPRSkeleton,
-        rng: np.random.Generator) -> NDArray:
+        rng: np.random.Generator) -> NDArray[np.float_]:
         """Sampling using User Defined BO.
 
         Args:
@@ -49,98 +48,115 @@ class BO_Interface(ABC):
         """
         raise NotImplementedError
     
-class BOSampling:
-    def __init__(self, bo_model: BO_Interface) -> None:
-        """ Initialize BO Method for use in Part-X
+@dataclass(frozen=True)
+class InitialPoints:
+    x_points: NDArray[np.float_]
+    y_points: NDArray[np.float_]
 
-        Args:
-            bo_model: Bayesian Optimization Class developed with partxv2.byesianOptimization.BO_Interface factory.
-        """
+@dataclass(frozen=True)
+class InitialPointsSampled:
+    x_points: NDArray[np.float_]
+    y_points: NDArray[np.float_]
+
+
+@dataclass(frozen=True)
+class SampledPoints:
+    x_points: NDArray[np.float_]
+    y_points: NDArray[np.float_]
+
+@dataclass
+class Result:
+    initial_points: InitialPoints
+    initial_points_sampled: InitialPointsSampled  # Fixed typo in field name
+    sampled_points: SampledPoints
+
+class BOSampling:
+    def __init__(self, bo_model: BOInterface) -> None:
         self.bo_model = bo_model
 
     def sample(
         self,
         test_function: Fn,
-        num_samples: int,
-        x_train: NDArray,
-        y_train: NDArray,
-        region_support: NDArray,
+        dim: int,
+        num_init_samples_required: int, 
+        max_budget: int,
+        region_support: NDArray[np.float_],
         gpr_model: GPRSkeleton,
         rng: np.random.Generator,
-    ) -> tuple: 
-        """Wrapper around user defined BO Model.
-
-        Args:
-            test_function: Function of System Under Test.
-            num_samples: Number of samples to generate from BO.
-            x_train: Samples from Training set.
-            y_train: Evaluated values of samples from Trainig set.
-            region_support: Min and Max of all dimensions
-            gpr_model: Gaussian Process Regressor Model developed using Factory
-            rng: RNG object from numpy
-
-        Raises:
-            TypeError: If x_train is not 2 dimensional numpy array or does not match dimensions
-            TypeError: If y_train is not (n,) numpy array
-            TypeError: If there is a mismatch between x_train and y_train
-
-        Returns:
-            x_complete
-            y_complete
-            x_new
-            y_new
-        """
-
+        x_train: NDArray[np.float_] | None = None,
+        y_train: NDArray[np.float_] | None = None,
+    ) -> Result:
         dim = region_support.shape[0]
-        if len(x_train.shape) != 2 or x_train.shape[1] != dim:
-            raise TypeError(f"Received samples set input: Expected (n, dim) array, received {x_train.shape} instead.")
-        if len(y_train.shape) != 1:
-            raise TypeError(f"Received evaluations set input: Expected (n,) array, received {y_train.shape} instead.")
-        if x_train.shape[0] != y_train.shape[0]:
-            raise TypeError(f"x_train, y_train set mismatch. x_train has shape {x_train.shape} and y_train has shape {y_train.shape}")
-
-
-        x_new = []
-        y_new = []
-        best_pt = np.min(y_train)
-        for _ in tqdm.tqdm(range(num_samples)):
-            # print(len(x_new))
-            # print(n_tries)
-            point = self.bo_model.sample(
-                x_train, y_train, region_support, gpr_model, rng
-            )
-            x_new.append(point)
-            pred_sample_y = compute_robustness(np.array([point]), test_function)
-            x_train = np.vstack((x_train, np.array([point])))
-            y_train = np.hstack((y_train, pred_sample_y))
-            # best_pt = min(best_pt, pred_sample_y)
-            # print(best_pt)
-        # x_new = np.array(x_new)
-        # y_new = np.array(y_new)
-        # print(x_new)
-        # print(x_new.shape)
         
-        assert len(x_train.shape) == 2, f"Returned merged samples set input: Expected (n, dim) array, returned {x_train.shape} instead."
-        assert len(y_train.shape) == 1, f"Returned merged evaluations set input: Expected (n, ) array, returned {y_train.shape} instead."
+        if num_init_samples_required >= max_budget:
+            raise ValueError("num_init_samples_required should be greater than exceed max_budget")
 
-        return x_train, y_train
+        # Initialize containers for different point types
+        initial_x = np.empty((0, dim)) if x_train is None else x_train.copy()
+        initial_y = np.empty(0) if y_train is None else y_train.copy()
+        initial_sampled_x = np.empty((0, dim))
+        initial_sampled_y = np.empty(0)
+        
+        # Handle existing data case
+        if x_train is not None and y_train is not None:
+            # Validate input shapes
+            if len(x_train.shape) != 2 or x_train.shape[1] != dim:
+                raise TypeError(f"Expected (n, {dim}) array, got {x_train.shape}")
+            if len(y_train.shape) != 1:
+                raise TypeError(f"Expected (n,) array, got {y_train.shape}")
+            if x_train.shape[0] != y_train.shape[0]:
+                raise TypeError("x_train and y_train size mismatch")
+
+            # Calculate needed initial samples
+            points_to_sample = max(num_init_samples_required - x_train.shape[0], 0)
+            if points_to_sample > 0:
+                initial_sampled_x = uniform_sampling(points_to_sample, region_support, dim, rng)
+                initial_sampled_y = compute_robustness(initial_sampled_x, test_function)
+                
+                # Update training data (for BO process)
+                x_train = np.vstack((x_train, initial_sampled_x))
+                y_train = np.append(y_train, initial_sampled_y)
+
+            bo_points_to_sample = max_budget - points_to_sample
+        else:
+            # No existing data - sample all initial points
+            initial_sampled_x = uniform_sampling(num_init_samples_required, region_support, dim, rng)
+            initial_sampled_y = compute_robustness(initial_sampled_x, test_function)
+            x_train, y_train = initial_sampled_x.copy(), initial_sampled_y.copy()
+            bo_points_to_sample = max_budget - num_init_samples_required
+
+        # Perform BO sampling
+        bo_x = np.empty((bo_points_to_sample, dim))
+        bo_y = np.empty(bo_points_to_sample)
+        for i in tqdm.tqdm(range(bo_points_to_sample)):
+            point = self.bo_model.sample(x_train, y_train, region_support, gpr_model, rng)
+            y_val = compute_robustness(np.array([point]), test_function)
+            
+            x_train = np.vstack((x_train, point))
+            y_train = np.append(y_train, y_val)
+            bo_x[i] = point
+            bo_y[i] = y_val
+
+        return Result(
+            initial_points=InitialPoints(initial_x, initial_y),
+            initial_points_sampled=InitialPointsSampled(initial_sampled_x, initial_sampled_y),
+            sampled_points=SampledPoints(bo_x, bo_y)
+        )
 
 
-# local_oracle = None
 
-
-class InternalBO(BO_Interface):
+class InternalBO(BOInterface):
     def __init__(self) -> None:
         pass
 
     def sample(
-         self,
-         x_train: NDArray,
-         y_train: NDArray,
-         region_support: NDArray,
-         gpr_model:  GPRSkeleton,
-         rng: np.random.Generator,
-      ) -> NDArray:
+        self,
+        x_train: NDArray[np.float_],
+        y_train: NDArray[np.float_],
+        region_support: NDArray[np.float_],
+        gpr_model:  GPRSkeleton,
+        rng: np.random.Generator,
+      ) -> NDArray[np.float_]:
 
         """Internal BO Model
 
@@ -163,13 +179,15 @@ class InternalBO(BO_Interface):
         
         model = GPR(gpr_model)
         model.fit(x_train, y_train)
+        return self._opt_acquisition(y_train, model, region_support, rng)
 
-        pred_sample_x = self._opt_acquisition(y_train, model, region_support, rng)
-
-
-        return pred_sample_x
-
-    def _opt_acquisition(self, y_train: NDArray, gpr_model: GPR, region_support: NDArray, rng: np.random.Generator) -> NDArray:
+    def _opt_acquisition(
+        self, 
+        y_train: NDArray[np.float_], 
+        gpr_model: GPR, 
+        region_support: NDArray[np.float_], 
+        rng: np.random.Generator
+    ) -> NDArray[np.float_]:
         """Get the sample points
 
         Args:
@@ -193,14 +211,7 @@ class InternalBO(BO_Interface):
         upper_bound_theta = np.ndarray.flatten(region_support[:, 1])
 
         random_samples = uniform_sampling(5000, region_support, tf_dim, rng)
-        
-        curr_best = np.min(y_train)
-        # constraints_out = np.array([oracle_info(x).val for x in random_samples])
-        # [print(oracle_info(x).val, oracle_info(x).sat) for x in random_samples]
-        # if oracle_info.oracle_function is not None:
-        #     constraint_model.fit(random_samples, constraints_out)
 
-        # bnds = Bounds(lower_bound_theta, upper_bound_theta)
         fun = lambda x_: -1 * self._acquisition(y_train, x_, gpr_model)
 
         
@@ -209,9 +220,7 @@ class InternalBO(BO_Interface):
             y_train, random_samples, gpr_model, "multiple")
 
         min_bo = np.array(random_samples[np.argmin(min_bo_val), :])
-        # import matplotlib.pyplot as plt
-        # plt.plot(random_samples, min_bo_val, ".")
-        # plt.show()
+        
         min_bo_val = np.min(min_bo_val)
 
         for _ in range(9):
@@ -231,11 +240,10 @@ class InternalBO(BO_Interface):
             fun, bounds=list(zip(lower_bound_theta, upper_bound_theta)), x0=min_bo
         )
         min_bo = new_params.x
-        # penalty = oracle_info(np.array(min_bo)).val
 
         return np.array(min_bo)
 
-    def _surrogate(self, gpr_model: GPR, x_train: NDArray):
+    def _surrogate(self, gpr_model: GPR, x_train: NDArray) -> tuple[NDArray[np.float_], NDArray[np.float_]]:
         """_surrogate Model function
 
         Args:

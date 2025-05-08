@@ -3,7 +3,7 @@ from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 
-from .bo import BOSampling
+from .core import BOSampling
 from .sampling import lhs_sampling, uniform_sampling
 from .utils import Fn, compute_robustness
 
