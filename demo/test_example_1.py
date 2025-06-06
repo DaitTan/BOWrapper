@@ -69,7 +69,7 @@ F16_PARAM_MAP = OrderedDict({
     'altitude': {
         'enabled': False,
         # 'default': 2338.4
-        'default': 2335
+        'default': 2331.0
     },
     'engine_power_lag': {
         'enabled': False,
@@ -86,7 +86,7 @@ specification = RTAMTDense(phi, {"alt": 0})
 # Define the optimizer
 gpr_model = InternalGPR()
 bo_model = InternalBO()
-optimizer = BO(100, gpr_model, bo_model, "lhs_sampling", Behavior.MINIMIZATION)
+optimizer = BO(64, gpr_model, bo_model, "lhs_sampling", Behavior.MINIMIZATION)
 
 # Initial Search Conditions
 initial_conditions = [
@@ -95,10 +95,10 @@ initial_conditions = [
     (-math.pi / 4) + np.array((-math.pi / 8, math.pi / 8)),
 ]
 
-options = Options(runs=10, iterations=1000, interval=(0, 15), static_parameters=initial_conditions, seed = 12345)
+options = Options(runs=1, iterations=64, interval=(0, 15), static_parameters=initial_conditions, seed = 12346)
 
 
-f16_model =  F16Model(F16_PARAM_MAP, 100, "morelli", 'rk45')
+f16_model =  F16Model(F16_PARAM_MAP, 200, "morelli", 'rk45')
 
 if __name__ == "__main__":
 
@@ -130,5 +130,5 @@ if __name__ == "__main__":
     # )
     # figure.update_layout(title=f"Example 1: {[round(a,5) for a in best_sample.values]}", xaxis_title="time (s)")
     # figure.write_image("fig1.pdf")
-    with open("HighFidelity_morelli_rk45_100.pkl", "wb") as f:
+    with open("HighFidelity_morelli_rk45_200_2331_dnnmfbo.pkl", "wb") as f:
         pickle.dump(result, f)

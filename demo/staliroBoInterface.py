@@ -8,6 +8,7 @@ from staliro.core import Interval, Optimizer, ObjectiveFn, Sample
 from bo.bayesianOptimization import BOSampling, Behavior
 from bo.utils import compute_robustness
 from bo.sampling import uniform_sampling, lhs_sampling
+import pickle 
 
 Bounds = Sequence[Interval]
 BOResult = tuple[Any,Any]
@@ -43,6 +44,14 @@ class BO(Optimizer[float, BOResult]):
         elif self.init_sampling_method == "lhs_sampling":
             in_samples_1 = lhs_sampling(self.init_sampling_budget, region_support, len(region_support), rng)
         
+        with open("/home/local/ASURITE/tkhandai/Research_Work/BOWrapper/demo/init_data_2331.pkl", "rb") as f:
+            data = pickle.load(f)
+        # in_samples_1 = data
+        with open("/home/local/ASURITE/tkhandai/Research_Work/BOWrapper/demo/history_data_2331.pkl", "rb") as f:
+            data2 = pickle.load(f)
+        
+        in_samples_1 = np.vstack((data, data2))
+
         out_samples_1 = []
         for iter, single_sample in enumerate(in_samples_1):
             
