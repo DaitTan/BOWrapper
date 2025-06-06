@@ -28,7 +28,8 @@ class BOInterface(ABC):
         y_train: NDArray[np.float_],
         region_support: NDArray[np.float_],
         gpr_model: GPRSkeleton,
-        rng: np.random.Generator) -> NDArray[np.float_]:
+        rng: np.random.Generator,
+        curr_best: NDArray[np.float_] | None) -> NDArray[np.float_]:
         """Sampling using User Defined BO.
 
         Args:
@@ -78,19 +79,24 @@ class BOSampling:
         self,
         test_function: Fn,
         dim: int,
-        num_init_samples_required: int, 
-        max_budget: int,
+        num_init_samples: int,
+        num_bo_samples: int, 
         region_support: NDArray[np.float_],
         gpr_model: GPRSkeleton,
         rng: np.random.Generator,
         x_train: NDArray[np.float_] | None = None,
         y_train: NDArray[np.float_] | None = None,
+        curr_best: NDArray[np.float_] | None = None
     ) -> Result:
         dim = region_support.shape[0]
         
-        if num_init_samples_required >= max_budget:
-            raise ValueError("num_init_samples_required should be greater than exceed max_budget")
+        
+        if num_bo_samples <= 0:
+            raise ValueError("num_bo_samples cannot be zero")
 
+        if num_init_samples <= 0:
+            raise ValueError("num_init_samples cannot be zero")
+        
         # Initialize containers for different point types
         initial_x = np.empty((0, dim)) if x_train is None else x_train.copy()
         initial_y = np.empty(0) if y_train is None else y_train.copy()
@@ -108,7 +114,7 @@ class BOSampling:
                 raise TypeError("x_train and y_train size mismatch")
 
             # Calculate needed initial samples
-            points_to_sample = max(num_init_samples_required - x_train.shape[0], 0)
+            points_to_sample = max(num_init_samples - x_train.shape[0], 0)
             if points_to_sample > 0:
                 initial_sampled_x = uniform_sampling(points_to_sample, region_support, dim, rng)
                 initial_sampled_y = compute_robustness(initial_sampled_x, test_function)
@@ -117,21 +123,21 @@ class BOSampling:
                 x_train = np.vstack((x_train, initial_sampled_x))
                 y_train = np.append(y_train, initial_sampled_y)
 
-            bo_points_to_sample = max_budget - points_to_sample
+            
         else:
             # No existing data - sample all initial points
-            initial_sampled_x = uniform_sampling(num_init_samples_required, region_support, dim, rng)
+            initial_sampled_x = uniform_sampling(num_init_samples, region_support, dim, rng)
             initial_sampled_y = compute_robustness(initial_sampled_x, test_function)
             x_train, y_train = initial_sampled_x.copy(), initial_sampled_y.copy()
-            bo_points_to_sample = max_budget - num_init_samples_required
+            
 
         # Perform BO sampling
-        bo_x = np.empty((bo_points_to_sample, dim))
-        bo_y = np.empty(bo_points_to_sample)
-        for i in tqdm.tqdm(range(bo_points_to_sample)):
-            point = self.bo_model.sample(x_train, y_train, region_support, gpr_model, rng)
+        bo_x = np.empty((num_bo_samples, dim))
+        bo_y = np.empty(num_bo_samples)
+        for i in range(num_bo_samples):
+            point = self.bo_model.sample(x_train, y_train, region_support, gpr_model, rng, curr_best)
             y_val = compute_robustness(np.array([point]), test_function)
-            
+            # print(f"{point} -> {y_val}")
             x_train = np.vstack((x_train, point))
             y_train = np.append(y_train, y_val)
             bo_x[i] = point
@@ -156,6 +162,7 @@ class InternalBO(BOInterface):
         region_support: NDArray[np.float_],
         gpr_model:  GPRSkeleton,
         rng: np.random.Generator,
+        curr_best: NDArray[np.float_]|None
       ) -> NDArray[np.float_]:
 
         """Internal BO Model
@@ -176,7 +183,7 @@ class InternalBO(BOInterface):
         Returns:
             x_new
          """
-        
+        self.curr_best = min(np.min(y_train), curr_best) if curr_best is not None else np.min(y_train)
         model = GPR(gpr_model)
         model.fit(x_train, y_train)
         return self._opt_acquisition(y_train, model, region_support, rng)
@@ -268,7 +275,7 @@ class InternalBO(BOInterface):
         Returns:
             EI of samples
         """
-        curr_best = np.min(y_train)
+        
 
         
         if sample_type == "multiple":
@@ -281,7 +288,7 @@ class InternalBO(BOInterface):
 
                 if pred_var > 0:
                     # con_term = norm.cdf(0, mu_con_iter, std_con_iter)
-                    var_1 = curr_best - mu_iter
+                    var_1 = self.curr_best - mu_iter
                     var_2 = var_1 / pred_var
 
                     ei = (var_1 * norm.cdf(var_2)) + (
@@ -300,7 +307,7 @@ class InternalBO(BOInterface):
             pred_var = std[0]
             if pred_var > 0:
                 # con_term = norm.cdf(0,mu_con[0], std_con[0])
-                var_1 = curr_best - mu[0]
+                var_1 = self.curr_best - mu[0]
                 var_2 = var_1 / pred_var
 
                 ei = (var_1 * norm.cdf(var_2)) + (
